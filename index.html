@@ -446,6 +446,7 @@ html[data-fokus="pa"] .panelToggle{display:none}
       <div class="row">
         <button class="chip wide on" id="visaMarkor"><svg class="pikt"><use href="#p-markor"/></svg>Visa pennmarkör</button>
         <button class="chip wide" id="visaNummer"><svg class="pikt"><use href="#p-ordning"/></svg>Visa dragordning</button>
+        <button class="chip wide" id="visaSpoke"><svg class="pikt"><use href="#p-forlaga"/></svg>Visa förlaga under uppspelning</button>
         <button class="chip wide" id="naturligFart"><svg class="pikt"><use href="#p-klocka"/></svg>Spela i din egen takt</button>
         <button class="chip wide" id="lageSlinga"><svg class="pikt"><use href="#p-slinga"/></svg>Spela om och om igen</button>
       </div>
@@ -686,7 +687,7 @@ var S = {
   fokus:false,
   pennstorlek:11, penntyp:'penna', pennfarg:'#111111',
   linjatur:'linjerat', sidfarg:'#ffffff', format:'staende',
-  spar:false, markor:true, nummer:false, naturlig:false, slinga:false,
+  spar:false, markor:true, nummer:false, spoke:false, naturlig:false, slinga:false,
   zoom:70, fart:5, tema:'ljus', tavla:false
 };
 
@@ -1066,6 +1067,20 @@ function sattSpelKnapp(spelar){
   k.querySelector('use').setAttribute('href', spelar ? '#p-stopp' : '#p-spela');
   k.classList.toggle('stop', spelar);
 }
+/* Blek helbild av bokstaven under uppspelningen, sa att eleven ser vart
+   draget ar pa vag. Ritas i full styrka pa en egen yta och bleks ner samlat,
+   annars slar textlagrens egen alpha och suddningar sonder resultatet. */
+function ritaSpokbild(){
+  if (!S.spoke || !items.length) return;
+  var tmp = document.createElement('canvas');
+  tmp.width = PAGE.w; tmp.height = PAGE.h;
+  var xt = tmp.getContext('2d');
+  for (var i=0;i<items.length;i++) ritaItem(xt, items[i], NOLL);
+  xIn.save();
+  xIn.globalAlpha = 0.22;
+  xIn.drawImage(tmp, 0, 0);
+  xIn.restore();
+}
 function stoppa(){
   if (anim){ cancelAnimationFrame(anim.raf); anim = null; }
   sattSpelKnapp(false);
@@ -1080,6 +1095,7 @@ function spelaUpp(){
   anim = { plan:byggPlan(), pek:0, klocka:0, klara:-1, kurs:null,
            sist:performance.now(), raf:0, pausad:false };
   xIn.clearRect(0,0,PAGE.w,PAGE.h);
+  ritaSpokbild();
   ritaOverlay(null, -1);
   sattSpelKnapp(true);
   sattPausKnapp();
@@ -1088,6 +1104,7 @@ function spelaUpp(){
 function omstart(){
   anim.pek = 0; anim.klocka = 0; anim.klara = -1; anim.kurs = null;
   xIn.clearRect(0,0,PAGE.w,PAGE.h);
+  ritaSpokbild();
 }
 function steg(nu){
   if (!anim) return;
@@ -1227,7 +1244,7 @@ function skrivUt(){
 /* ---------------- Inställningar: spara / länk ---------------- */
 function samla(){
   return { p:S.pennstorlek, t:S.penntyp, f:S.pennfarg, l:S.linjatur, s:S.sidfarg,
-           fo:S.format, sp:S.spar, mk:S.markor, nr:S.nummer, nf:S.naturlig, sl:S.slinga,
+           fo:S.format, sp:S.spar, mk:S.markor, nr:S.nummer, sk:S.spoke, nf:S.naturlig, sl:S.slinga,
            z:S.zoom, v:S.fart,
            tx:$('txtText').value, ta:$('txtAntal').value, tf:$('txtFont').value,
            ts:$('txtStorlek').value, tc:txtFargVal };
@@ -1244,7 +1261,7 @@ function tillampa(o){
   if (o.v) S.fart = +o.v;
   S.spar = !!o.sp;
   if (o.mk !== undefined) S.markor = !!o.mk;
-  S.nummer = !!o.nr; S.naturlig = !!o.nf; S.slinga = !!o.sl;
+  S.nummer = !!o.nr; S.spoke = !!o.sk; S.naturlig = !!o.nf; S.slinga = !!o.sl;
   if (o.tx !== undefined) $('txtText').value = o.tx;
   if (o.ta) $('txtAntal').value = o.ta;
   if (o.tf) $('txtFont').value = o.tf;
@@ -1342,6 +1359,7 @@ function syncUI(){
   $('lageSpar').classList.toggle('on', S.spar);
   $('visaMarkor').classList.toggle('on', S.markor);
   $('visaNummer').classList.toggle('on', S.nummer);
+  $('visaSpoke').classList.toggle('on', S.spoke);
   $('naturligFart').classList.toggle('on', S.naturlig);
   $('lageSlinga').classList.toggle('on', S.slinga);
   $('zoom').value = S.zoom; $('fart').value = S.fart;
@@ -1377,6 +1395,7 @@ function vaxla(id, nyckel, efter){
 }
 vaxla('visaMarkor',   'markor',   function(){ if (!anim) ritaOverlay(null); });
 vaxla('visaNummer',   'nummer',   function(){ if (!anim) ritaOverlay(null); });
+vaxla('visaSpoke',    'spoke');
 vaxla('naturligFart', 'naturlig');
 vaxla('lageSlinga',   'slinga');
 $('lageSpar').addEventListener('click', function(){
