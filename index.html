@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<!-- Skrivövaren – skapad av Magnus MacNeil -->
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="author" content="Magnus MacNeil">
+<meta name="color-scheme" content="light dark">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Skrivövaren – visa hur bokstäver skrivs</title>
+<meta name="description" content="Skrivträningsverktyg för svensk skola: läraren skriver en bokstav för hand och verktyget spelar upp rörelsen så eleverna ser dragordning och riktning. Svensk linjatur, å ä ö, spårläge, utskrift och PDF.">
+<style>
+/* =========================================================
+   Skolverktygsdesign – läge: lugn
+   Identitetsfärg: teal. Krom i gråskala. Signalfärger reserverade.
+   ========================================================= */
+:root{
+  color-scheme:light;
+
+  --sv-yta-0:#F4F3EF;
+  --sv-yta-1:#FAF9F6;
+  --sv-yta-2:#FFFFFF;
+  --sv-text:#1A1A18;
+  --sv-text-sekundar:#5F5E5A;
+  --sv-text-dampad:#8A8880;
+  --sv-linje:rgba(26,26,24,.14);
+  --sv-linje-stark:rgba(26,26,24,.28);
+
+  --sv-id-teal:#9FE1CB;   --sv-id-teal-text:#04342C;
+  --sv-id-amber:#FAC775;  --sv-id-amber-text:#412402;
+  --sv-id-bla:#B5D4F4;    --sv-id-bla-text:#042C53;
+  --sv-id-korall:#F5C4B3; --sv-id-korall-text:#4A1B0C;
+  --sv-id-lila:#CECBF6;   --sv-id-lila-text:#26215C;
+
+  --sv-signal-fel:#A32D2D;      --sv-signal-fel-yta:#FCEBEB;
+  --sv-signal-klart:#3B6D11;    --sv-signal-klart-yta:#EAF3DE;
+  --sv-signal-varning:#854F0B;  --sv-signal-varning-yta:#FAEEDA;
+
+  --sv-accent:var(--sv-id-teal);
+  --sv-accent-text:var(--sv-id-teal-text);
+
+  --sv-sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+
+  --sv-steg-1:8px; --sv-steg-2:12px; --sv-steg-3:16px; --sv-steg-4:24px; --sv-steg-5:32px;
+  --sv-radie:8px; --sv-radie-kort:12px; --sv-harlinje:0.5px; --sv-tryckyta:44px;
+
+  /* Skalfaktor för tavelläge – ändras nedan, aldrig i komponenterna */
+  --sv-kontroll:14px;
+  --sv-panel:264px;
+}
+
+/* Mörkt läge: samma formspråk, enbart gråskalan vänds. */
+html[data-tema="mork"]{
+  color-scheme:dark;
+  --sv-yta-0:#141412;
+  --sv-yta-1:#1D1D1A;
+  --sv-yta-2:#232320;
+  --sv-text:#F2F0EA;
+  --sv-text-sekundar:#B4B2AB;
+  --sv-text-dampad:#8A8880;
+  --sv-linje:rgba(242,240,234,.16);
+  --sv-linje-stark:rgba(242,240,234,.34);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--sv-yta-0);
+  color:var(--sv-text);
+  font-family:var(--sv-sans);
+  font-size:16px;
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none; user-select:none;
+}
+textarea,input{-webkit-user-select:text; user-select:text}
+button,select,input,textarea{font-family:inherit; color:inherit}
+button{cursor:pointer}
+h1,h2,h3{font-weight:500; line-height:1.3; margin:0}
+
+/* ---------- Piktogram ---------- */
+.pikt{
+  width:20px; height:20px; flex:0 0 auto;
+  fill:none; stroke:currentColor; stroke-width:1.5;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+#piktogram{position:absolute; width:0; height:0; overflow:hidden}
+
+/* ---------- Stomme ---------- */
+.app{display:flex; flex-direction:column; height:100dvh}
+
+.topbar{
+  flex:0 0 auto; display:flex; align-items:center; gap:var(--sv-steg-2);
+  padding:var(--sv-steg-1) var(--sv-steg-3);
+  background:var(--sv-yta-2);
+  border-bottom:var(--sv-harlinje) solid var(--sv-linje);
+  z-index:30;
+}
+.topbar h1{font-size:18px; white-space:nowrap}
+.topbar .sub{font-size:13px; color:var(--sv-text-dampad); white-space:nowrap}
+.topbar .spacer{flex:1}
+
+.tbtn{
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:var(--sv-tryckyta); min-height:var(--sv-tryckyta);
+  padding:0 var(--sv-steg-2);
+  background:transparent;
+  border:var(--sv-harlinje) solid var(--sv-linje-stark);
+  border-radius:var(--sv-radie);
+  color:var(--sv-text-sekundar);
+  transition:background 120ms ease;
+}
+.tbtn:hover{background:var(--sv-yta-1)}
+.tbtn:active{transform:scale(.98)}
+.tbtn.on{background:var(--sv-accent); border-color:transparent; color:var(--sv-accent-text)}
+
+.work{flex:1; display:flex; min-height:0; position:relative}
+
+.panel{
+  width:var(--sv-panel); flex:0 0 var(--sv-panel);
+  background:var(--sv-yta-1);
+  border-right:var(--sv-harlinje) solid var(--sv-linje);
+  overflow-y:auto; overscroll-behavior:contain;
+  padding:var(--sv-steg-3);
+  z-index:20;
+}
+.panel.right{border-right:none; border-left:var(--sv-harlinje) solid var(--sv-linje)}
+.panel h2{
+  font-size:13px; font-weight:500; color:var(--sv-text-dampad);
+  margin:var(--sv-steg-4) 0 var(--sv-steg-1);
+}
+.panel h2:first-child{margin-top:0}
+
+.stage{
+  flex:1; min-width:0; overflow:auto; overscroll-behavior:contain;
+  background:var(--sv-yta-0);
+  display:flex; align-items:flex-start; justify-content:center;
+  padding:var(--sv-steg-4);
+}
+.pagewrap{
+  position:relative; flex:0 0 auto;
+  border:var(--sv-harlinje) solid var(--sv-linje-stark);
+  border-radius:var(--sv-radie);
+  overflow:hidden;
+}
+.pagewrap canvas{position:absolute; inset:0; width:100%; height:100%; display:block}
+.pagewrap canvas#cBg{position:relative}
+#cInk{touch-action:none; cursor:crosshair}
+#cMark{pointer-events:none}
+
+.bottombar{
+  flex:0 0 auto; display:flex; align-items:center; flex-wrap:wrap;
+  gap:var(--sv-steg-2);
+  padding:var(--sv-steg-1) var(--sv-steg-3);
+  background:var(--sv-yta-2);
+  border-top:var(--sv-harlinje) solid var(--sv-linje);
+  z-index:20;
+}
+
+/* ---------- Kontroller ---------- */
+.row{display:flex; gap:var(--sv-steg-1); flex-wrap:wrap}
+
+.chip{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  flex:1 1 auto; min-width:64px; min-height:var(--sv-tryckyta);
+  padding:0 var(--sv-steg-2);
+  background:transparent;
+  border:var(--sv-harlinje) solid var(--sv-linje-stark);
+  border-radius:var(--sv-radie);
+  color:var(--sv-text);
+  font-size:var(--sv-kontroll); line-height:1.25; text-align:center;
+  transition:background 120ms ease;
+}
+.chip:hover{background:var(--sv-yta-2)}
+.chip:active{transform:scale(.98)}
+.chip.on{background:var(--sv-accent); border-color:transparent; color:var(--sv-accent-text); font-weight:500}
+.chip.wide{flex:1 1 100%}
+.chip.tall{flex-direction:column; gap:4px; padding:var(--sv-steg-1) 4px; min-width:60px}
+
+.big{
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--sv-steg-1);
+  min-height:var(--sv-tryckyta); padding:0 var(--sv-steg-4);
+  background:var(--sv-accent); color:var(--sv-accent-text);
+  border:none; border-radius:var(--sv-radie);
+  font-size:calc(var(--sv-kontroll) + 1px); font-weight:500;
+  transition:background 120ms ease;
+}
+.big:active{transform:scale(.98)}
+.big.stop{background:transparent; color:var(--sv-text); border:var(--sv-harlinje) solid var(--sv-linje-stark)}
+
+.ghost{
+  display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  min-height:var(--sv-tryckyta); padding:0 var(--sv-steg-2);
+  background:transparent;
+  border:var(--sv-harlinje) solid var(--sv-linje-stark);
+  border-radius:var(--sv-radie);
+  font-size:var(--sv-kontroll);
+  transition:background 120ms ease;
+}
+.ghost:hover{background:var(--sv-yta-1)}
+.ghost:active{transform:scale(.98)}
+.ghost.on{background:var(--sv-accent); border-color:transparent; color:var(--sv-accent-text); font-weight:500}
+.ghost:disabled{color:var(--sv-text-dampad); border-color:var(--sv-linje); cursor:default}
+.ghost:disabled:hover{background:transparent}
+.ghost:disabled:active{transform:none}
+
+.slider{display:flex; align-items:center; gap:var(--sv-steg-1); font-size:13px; color:var(--sv-text-sekundar)}
+.slider input[type=range]{width:120px; height:var(--sv-tryckyta); accent-color:var(--sv-text-sekundar)}
+.slider .varde{min-width:38px; color:var(--sv-text-dampad); font-variant-numeric:tabular-nums}
+
+/* ---------- Färgval ---------- */
+.swatches{display:grid; gap:var(--sv-steg-1)}
+.sw,.swp{
+  width:100%; padding:0; background:none;
+  border:var(--sv-harlinje) solid var(--sv-linje-stark);
+}
+.sw{aspect-ratio:1; border-radius:50%; min-height:var(--sv-tryckyta)}
+.swp{height:var(--sv-tryckyta); border-radius:var(--sv-radie)}
+.sw.on,.swp.on{outline:2px solid var(--sv-text); outline-offset:2px}
+.valdfarg{font-size:13px; color:var(--sv-text-dampad); margin-top:var(--sv-steg-1)}
+
+.hint{font-size:13px; line-height:1.55; color:var(--sv-text-dampad); margin:var(--sv-steg-1) 0 0}
+
+.fald{
+  width:100%; min-height:var(--sv-tryckyta);
+  background:var(--sv-yta-2);
+  border:var(--sv-harlinje) solid var(--sv-linje-stark);
+  border-radius:var(--sv-radie);
+  padding:0 var(--sv-steg-2);
+  font-size:var(--sv-kontroll);
+  margin-bottom:var(--sv-steg-1);
+}
+
+/* ---------- Bokstavsbibliotek ---------- */
+.bibl{display:flex; flex-wrap:wrap; gap:var(--sv-steg-1); margin-top:var(--sv-steg-1)}
+.bibl .bk{
+  display:inline-flex; align-items:center;
+  border:var(--sv-harlinje) solid var(--sv-linje-stark);
+  border-radius:var(--sv-radie);
+  overflow:hidden;
+}
+.bibl .bk b{
+  display:inline-flex; align-items:center;
+  min-height:var(--sv-tryckyta); padding:0 var(--sv-steg-2);
+  font-size:var(--sv-kontroll); font-weight:500; cursor:pointer;
+}
+.bibl .bk b:hover{background:var(--sv-yta-2)}
+.bibl .bk .x{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:36px; min-height:var(--sv-tryckyta);
+  background:none; border:none;
+  border-left:var(--sv-harlinje) solid var(--sv-linje);
+  color:var(--sv-text-dampad);
+}
+.bibl .bk .x:hover{color:var(--sv-signal-fel)}
+.bibl .tom{font-size:13px; color:var(--sv-text-dampad)}
+
+/* ---------- Överlägg ---------- */
+.overlay{
+  position:fixed; inset:0; display:none;
+  align-items:center; justify-content:center;
+  padding:var(--sv-steg-3);
+  background:rgba(26,26,24,.42);
+  z-index:60;
+}
+.overlay.open{display:flex}
+.modal{
+  width:min(640px,100%); max-height:88dvh; overflow-y:auto;
+  background:var(--sv-yta-2);
+  border:var(--sv-harlinje) solid var(--sv-linje);
+  border-radius:var(--sv-radie-kort);
+  padding:var(--sv-steg-4);
+}
+.mhead{display:flex; align-items:center; justify-content:space-between; gap:var(--sv-steg-2); margin-bottom:var(--sv-steg-2)}
+.mhead h3{font-size:18px}
+.mhead button{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:var(--sv-tryckyta); height:var(--sv-tryckyta);
+  background:none; border:none; color:var(--sv-text-dampad);
+}
+.field{margin:var(--sv-steg-3) 0}
+.field label{display:block; font-size:13px; color:var(--sv-text-dampad); margin-bottom:6px}
+.field textarea,.field input[type=text],.field input[type=number],.field select{
+  width:100%; min-height:var(--sv-tryckyta);
+  background:var(--sv-yta-1);
+  border:var(--sv-harlinje) solid var(--sv-linje-stark);
+  border-radius:var(--sv-radie);
+  padding:var(--sv-steg-1) var(--sv-steg-2);
+  font-size:var(--sv-kontroll);
+}
+.field textarea{min-height:84px; resize:vertical; line-height:1.6}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:var(--sv-steg-2)}
+.presets{display:flex; flex-wrap:wrap; gap:var(--sv-steg-1)}
+.presets .chip{flex:0 0 auto; min-width:0}
+.mfoot{display:flex; gap:var(--sv-steg-2); margin-top:var(--sv-steg-4); flex-wrap:wrap}
+.mfoot .big{flex:1 1 200px}
+.mfoot .big.sekundar{background:transparent; color:var(--sv-text); border:var(--sv-harlinje) solid var(--sv-linje-stark)}
+
+.faq{border-top:var(--sv-harlinje) solid var(--sv-linje); padding-top:var(--sv-steg-2); margin-top:var(--sv-steg-3)}
+.faq details{padding:6px 0}
+.faq summary{cursor:pointer; font-weight:500; font-size:15px}
+.faq p{margin:6px 0 0; color:var(--sv-text-sekundar); font-size:15px}
+
+/* ---------- Notis ---------- */
+.notis{
+  position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
+  max-width:min(420px,90vw);
+  background:var(--sv-text); color:var(--sv-yta-2);
+  border-radius:var(--sv-radie);
+  padding:var(--sv-steg-2) var(--sv-steg-3);
+  font-size:15px; line-height:1.45; text-align:center;
+  z-index:99;
+}
+
+/* ---------- Tavelläge ---------- */
+html[data-tavla="pa"]{
+  --sv-kontroll:18px;
+  --sv-panel:312px;
+  --sv-tryckyta:56px;
+}
+html[data-tavla="pa"] .topbar h1{font-size:24px}
+html[data-tavla="pa"] .topbar .sub{font-size:15px}
+html[data-tavla="pa"] .panel h2{font-size:15px}
+html[data-tavla="pa"] .hint{font-size:15px}
+html[data-tavla="pa"] .pikt{width:24px; height:24px}
+html[data-tavla="pa"] .slider{font-size:16px}
+html[data-tavla="pa"] .slider input[type=range]{width:170px}
+html[data-tavla="pa"] .sw,html[data-tavla="pa"] .swp{min-height:44px}
+html[data-tavla="pa"] .modal{width:min(780px,100%)}
+
+/* ---------- Fokusläge ---------- */
+html[data-fokus="pa"] .panel{display:none}
+html[data-fokus="pa"] .panelToggle{display:none}
+
+/* ---------- Smal skärm ---------- */
+.panelToggle{display:none}
+@media (max-width:960px){
+  .panel{
+    position:absolute; top:0; bottom:0;
+    transform:translateX(-105%);
+    transition:transform 160ms ease;
+    border-right:var(--sv-harlinje) solid var(--sv-linje-stark);
+  }
+  .panel.right{right:0; transform:translateX(105%)}
+  .panel.open{transform:translateX(0)}
+  .panelToggle{display:inline-flex}
+  .topbar .sub{display:none}
+  .stage{padding:var(--sv-steg-2)}
+}
+
+/* ---------- Utskrift ---------- */
+#printArea{display:none}
+@media print{
+  body>*{display:none !important}
+  #printArea{display:block !important; margin:0}
+  #printArea img{width:100%; display:block}
+  @page{margin:8mm; size:auto}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important; animation:none !important}
+}
+</style>
+</head>
+<body>
+<!-- Piktogram: geometriska primitiver, 20×20, stroke 1.5, inga ikonbibliotek -->
+<svg id="piktogram" aria-hidden="true"><defs>
+  <symbol id="p-penna" viewBox="0 0 20 20"><path d="M4 16l.9-3.6L13.4 3.9l2.7 2.7-8.5 8.5L4 16z"/><path d="M11.8 5.5l2.7 2.7"/></symbol>
+  <symbol id="p-blyerts" viewBox="0 0 20 20"><path d="M4 16l.9-3.6L13.4 3.9l2.7 2.7-8.5 8.5L4 16z"/><path d="M4.9 12.4l2.7 2.7"/></symbol>
+  <symbol id="p-fjader" viewBox="0 0 20 20"><path d="M16.5 3.5C9.5 4.6 5 9.1 4 16"/><path d="M16.5 3.5c.5 5-2.4 8.7-7.3 9.5"/></symbol>
+  <symbol id="p-jamn" viewBox="0 0 20 20"><path d="M3 10h14"/></symbol>
+  <symbol id="p-sudd" viewBox="0 0 20 20"><path d="M8.6 16.5l-4.1-4.1a1.4 1.4 0 0 1 0-2l6-6a1.4 1.4 0 0 1 2 0l3.1 3.1a1.4 1.4 0 0 1 0 2l-7 7z"/><path d="M8.6 16.5H16"/></symbol>
+  <symbol id="p-spela" viewBox="0 0 20 20"><path d="M6.5 4l9.5 6-9.5 6z"/></symbol>
+  <symbol id="p-stopp" viewBox="0 0 20 20"><rect x="6" y="6" width="8" height="8" rx="1"/></symbol>
+  <symbol id="p-paus" viewBox="0 0 20 20"><rect x="6" y="4" width="3" height="12" rx="1"/><rect x="11" y="4" width="3" height="12" rx="1"/></symbol>
+  <symbol id="p-angra" viewBox="0 0 20 20"><path d="M7 5.5L3 9.5l4 4"/><path d="M3 9.5h8.5a4.5 4.5 0 0 1 0 9H8"/></symbol>
+  <symbol id="p-gorom" viewBox="0 0 20 20"><path d="M13 5.5l4 4-4 4"/><path d="M17 9.5H8.5a4.5 4.5 0 0 0 0 9H12"/></symbol>
+  <symbol id="p-rensa" viewBox="0 0 20 20"><path d="M3.5 6h13"/><path d="M5.5 6l.9 10.2a1 1 0 0 0 1 .8h5.2a1 1 0 0 0 1-.8L14.5 6"/><path d="M7.5 6V4.2a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V6"/></symbol>
+  <symbol id="p-tavla" viewBox="0 0 20 20"><rect x="2.5" y="3.5" width="15" height="10" rx="1"/><path d="M10 13.5v3"/><path d="M6.5 16.5h7"/></symbol>
+  <symbol id="p-paneler" viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="1"/><path d="M7 4v12"/><path d="M13 4v12"/></symbol>
+  <symbol id="p-panel-v" viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="1"/><path d="M7.5 4v12"/></symbol>
+  <symbol id="p-panel-h" viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="1"/><path d="M12.5 4v12"/></symbol>
+  <symbol id="p-oga" viewBox="0 0 20 20"><path d="M2 10s3.2-4.8 8-4.8 8 4.8 8 4.8-3.2 4.8-8 4.8S2 10 2 10z"/><circle cx="10" cy="10" r="2"/></symbol>
+  <symbol id="p-markor" viewBox="0 0 20 20"><circle cx="10" cy="10" r="6"/><circle cx="10" cy="10" r="1.6" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="p-ordning" viewBox="0 0 20 20"><path d="M3 13.5h14"/><circle cx="6" cy="7.5" r="1.8"/><circle cx="10" cy="7.5" r="1.8"/><circle cx="14" cy="7.5" r="1.8"/></symbol>
+  <symbol id="p-klocka" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M10 5.8V10l2.8 1.8"/></symbol>
+  <symbol id="p-slinga" viewBox="0 0 20 20"><path d="M4.5 8.5A5.5 5.5 0 1 1 6 14.6"/><path d="M4.5 5v3.5H8"/></symbol>
+  <symbol id="p-spara" viewBox="0 0 20 20"><path d="M3.5 4.5a1 1 0 0 1 1-1h8.6l3.4 3.4v8.6a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1z"/><path d="M6.5 3.5v4h6v-4"/><path d="M6.5 16.5v-4.5h7v4.5"/></symbol>
+  <symbol id="p-ner" viewBox="0 0 20 20"><path d="M10 3v9.5"/><path d="M6.2 8.8L10 12.6l3.8-3.8"/><path d="M4 16.5h12"/></symbol>
+  <symbol id="p-upp" viewBox="0 0 20 20"><path d="M10 12.6V3.1"/><path d="M6.2 6.9L10 3.1l3.8 3.8"/><path d="M4 16.5h12"/></symbol>
+  <symbol id="p-bild" viewBox="0 0 20 20"><rect x="2.5" y="4" width="15" height="12" rx="1"/><circle cx="7" cy="8" r="1.4"/><path d="M2.5 13.5l4-4 3.2 3.2 3-3 4.3 4.3"/></symbol>
+  <symbol id="p-skrivare" viewBox="0 0 20 20"><path d="M6 7.5V3.5h8v4"/><path d="M6 13.5H4.5a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H14"/><rect x="6" y="11.5" width="8" height="5" rx="1"/></symbol>
+  <symbol id="p-helskarm" viewBox="0 0 20 20"><path d="M3 7.5V3h4.5"/><path d="M17 7.5V3h-4.5"/><path d="M3 12.5V17h4.5"/><path d="M17 12.5V17h-4.5"/></symbol>
+  <symbol id="p-text" viewBox="0 0 20 20"><path d="M3.5 5.5h13"/><path d="M3.5 10h13"/><path d="M3.5 14.5h7.5"/></symbol>
+  <symbol id="p-lank" viewBox="0 0 20 20"><path d="M8.5 11.5a3.2 3.2 0 0 1 0-4.5l2-2a3.2 3.2 0 0 1 4.5 4.5l-1 1"/><path d="M11.5 8.5a3.2 3.2 0 0 1 0 4.5l-2 2A3.2 3.2 0 0 1 5 10.5l1-1"/></symbol>
+  <symbol id="p-mane" viewBox="0 0 20 20"><path d="M15.8 12.4A6.6 6.6 0 0 1 7.6 4.2a6.6 6.6 0 1 0 8.2 8.2z"/></symbol>
+  <symbol id="p-stang" viewBox="0 0 20 20"><path d="M5.5 5.5l9 9"/><path d="M14.5 5.5l-9 9"/></symbol>
+  <symbol id="p-hjalp" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7"/><path d="M8 8.1A2 2 0 1 1 10 10.5v1.2"/><path d="M10 14.4v.3"/></symbol>
+  <symbol id="p-forlaga" viewBox="0 0 20 20"><path d="M3 6.5h14"/><path d="M3 12.5h3.2M8.4 12.5h3.2M13.8 12.5h3.2"/></symbol>
+</defs></svg>
+
+<div class="app">
+
+  <header class="topbar">
+    <button class="tbtn panelToggle" id="btnLeft" title="Penna och uppspelning" aria-label="Penna och uppspelning"><svg class="pikt"><use href="#p-panel-v"/></svg></button>
+    <h1>Skrivövaren</h1>
+    <span class="sub">visa hur bokstaven skrivs</span>
+    <span class="spacer"></span>
+    <span class="sub" id="datum"></span>
+    <button class="tbtn" id="btnHjalp" title="Hjälp" aria-label="Hjälp"><svg class="pikt"><use href="#p-hjalp"/></svg></button>
+    <button class="tbtn" id="btnTema" title="Mörkt läge" aria-label="Mörkt läge"><svg class="pikt"><use href="#p-mane"/></svg></button>
+    <button class="tbtn panelToggle" id="btnRight" title="Papper och utskrift" aria-label="Papper och utskrift"><svg class="pikt"><use href="#p-panel-h"/></svg></button>
+  </header>
+
+  <div class="work">
+
+    <!-- ======== VÄNSTER ======== -->
+    <aside class="panel left" id="panelLeft">
+      <h2>Pennans tjocklek</h2>
+      <div class="row" id="pennstorlek">
+        <button class="chip" data-v="6">Tunn</button>
+        <button class="chip on" data-v="11">Mellan</button>
+        <button class="chip" data-v="18">Tjock</button>
+        <button class="chip wide" data-v="27">Extra tjock, för tavla</button>
+      </div>
+
+      <h2>Pennsort</h2>
+      <div class="row" id="penntyp">
+        <button class="chip tall on" data-v="penna"><svg class="pikt"><use href="#p-penna"/></svg>Bläck</button>
+        <button class="chip tall" data-v="blyerts"><svg class="pikt"><use href="#p-blyerts"/></svg>Blyerts</button>
+        <button class="chip tall" data-v="gaspenna"><svg class="pikt"><use href="#p-fjader"/></svg>Gåspenna</button>
+        <button class="chip tall" data-v="jamn"><svg class="pikt"><use href="#p-jamn"/></svg>Jämn</button>
+        <button class="chip tall" data-v="sudd"><svg class="pikt"><use href="#p-sudd"/></svg>Sudd</button>
+      </div>
+
+      <h2>Bläckfärg</h2>
+      <div class="swatches" id="pennfarg" style="grid-template-columns:repeat(4,1fr)"></div>
+      <div class="valdfarg" id="valdPennfarg"></div>
+      <div class="row" style="margin-top:8px">
+        <label class="chip wide">Egen färg <input type="color" id="egenFarg" value="#16325c" style="width:32px;height:24px;border:none;background:none;padding:0"></label>
+      </div>
+
+      <h2>Uppspelning</h2>
+      <div class="row">
+        <button class="chip wide on" id="visaMarkor"><svg class="pikt"><use href="#p-markor"/></svg>Visa pennmarkör</button>
+        <button class="chip wide" id="visaNummer"><svg class="pikt"><use href="#p-ordning"/></svg>Visa dragordning</button>
+        <button class="chip wide" id="naturligFart"><svg class="pikt"><use href="#p-klocka"/></svg>Spela i din egen takt</button>
+        <button class="chip wide" id="lageSlinga"><svg class="pikt"><use href="#p-slinga"/></svg>Spela om och om igen</button>
+      </div>
+      <p class="hint">Skriv ett a på sidan och tryck Spela upp. Eleverna ser i vilken ordning och riktning
+      dragen görs, inte bara hur bokstaven ser ut när den är klar.</p>
+
+      <h2>Bokstavsbibliotek</h2>
+      <input type="text" id="bokstavNamn" class="fald" maxlength="14" placeholder="Namn, till exempel a">
+      <button class="chip wide" id="btnSparaBokstav"><svg class="pikt"><use href="#p-spara"/></svg>Spara det jag skrivit</button>
+      <div class="bibl" id="bibliotek"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="chip" id="btnExport"><svg class="pikt"><use href="#p-ner"/></svg>Exportera</button>
+        <button class="chip" id="btnImport"><svg class="pikt"><use href="#p-upp"/></svg>Importera</button>
+      </div>
+      <input type="file" id="filImport" accept="application/json,.json" style="display:none">
+      <p class="hint">Spara varje bokstav en gång, spela upp den hur ofta som helst.
+      Exportfilen kan delas via Drive.</p>
+
+      <h2>Spårläge</h2>
+      <div class="row">
+        <button class="chip wide" id="btnHandForlaga"><svg class="pikt"><use href="#p-forlaga"/></svg>Gör det jag skrivit till förlaga</button>
+        <button class="chip wide" id="lageSpar"><svg class="pikt"><use href="#p-oga"/></svg>Visa förlagan</button>
+        <button class="chip wide" id="btnRensaForlaga2">Ta bort förlagan</button>
+      </div>
+      <p class="hint">Skriv bokstaven för hand, eller hämta den ur biblioteket, och gör den till förlaga.
+      Din egen handstil bleknar ut och eleven skriver ovanpå. Maskinskriven förlaga får du via Skriv in text.</p>
+
+      <h2>Dela</h2>
+      <button class="chip wide" id="btnDela"><svg class="pikt"><use href="#p-lank"/></svg>Kopiera länk med inställningar</button>
+    </aside>
+
+    <!-- ======== SKRIVYTA ======== -->
+    <div class="stage" id="stage">
+      <div class="pagewrap" id="pagewrap">
+        <canvas id="cBg"></canvas>
+        <canvas id="cForlaga"></canvas>
+        <canvas id="cInk"></canvas>
+        <canvas id="cMark"></canvas>
+      </div>
+    </div>
+
+    <!-- ======== HÖGER ======== -->
+    <aside class="panel right" id="panelRight">
+      <h2>Linjatur</h2>
+      <div class="row" id="linjatur">
+        <button class="chip" data-v="blank">Blankt</button>
+        <button class="chip on" data-v="linjerat">Linjerat 8 mm</button>
+        <button class="chip" data-v="punkt">Punktlinjer</button>
+        <button class="chip" data-v="rutat5">Rutat 5 mm</button>
+        <button class="chip" data-v="rutat10">Rutat 10 mm</button>
+        <button class="chip" data-v="skrivlinjer">Skrivlinjer</button>
+        <button class="chip" data-v="fyrlinje">Fyrlinjesystem</button>
+        <button class="chip" data-v="montessori">Montessori</button>
+        <button class="chip" data-v="sned">Sneda hjälplinjer</button>
+        <button class="chip" data-v="kollegie">Kollegieblock</button>
+      </div>
+
+      <h2>Pappersfärg</h2>
+      <div class="swatches" id="sidfarg" style="grid-template-columns:repeat(4,1fr)"></div>
+      <div class="valdfarg" id="valdSidfarg"></div>
+      <p class="hint">Tonat papper sänker kontrasten och underlättar för elever med dyslexi.</p>
+
+      <h2>Sidformat</h2>
+      <div class="row" id="format">
+        <button class="chip on" data-v="staende">Stående A4</button>
+        <button class="chip" data-v="liggande">Liggande A4</button>
+        <button class="chip wide" data-v="tavla">Tavla 16:9, hela smartboarden</button>
+      </div>
+
+      <h2>Text och förlaga</h2>
+      <button class="chip wide" id="btnText"><svg class="pikt"><use href="#p-text"/></svg>Skriv in text</button>
+
+      <h2>Spara och skriv ut</h2>
+      <div class="row">
+        <button class="chip wide" id="btnPng"><svg class="pikt"><use href="#p-bild"/></svg>Ladda ner som bild</button>
+        <button class="chip wide" id="btnPrint"><svg class="pikt"><use href="#p-skrivare"/></svg>Skriv ut eller spara som PDF</button>
+      </div>
+
+    </aside>
+  </div>
+
+  <!-- ======== BOTTENRAD ======== -->
+  <div class="bottombar">
+    <button class="big" id="btnSpela"><svg class="pikt" id="piktSpela"><use href="#p-spela"/></svg><span class="txt">Spela upp</span></button>
+    <button class="ghost" id="btnPaus" title="Pausa uppspelningen" disabled><svg class="pikt"><use href="#p-paus"/></svg><span class="txt">Paus</span></button>
+    <button class="ghost" id="btnAngra" title="Ångra"><svg class="pikt"><use href="#p-angra"/></svg>Ångra</button>
+    <button class="ghost" id="btnGorOm" title="Gör om"><svg class="pikt"><use href="#p-gorom"/></svg>Gör om</button>
+    <button class="ghost" id="btnRensa" title="Rensa sidan"><svg class="pikt"><use href="#p-rensa"/></svg>Rensa</button>
+    <button class="ghost" id="btnTavla" title="Större kontroller för smartboard"><svg class="pikt"><use href="#p-tavla"/></svg>Tavelläge</button>
+    <button class="ghost" id="btnFull" title="Helskärm"><svg class="pikt"><use href="#p-helskarm"/></svg><span class="txt">Helskärm</span></button>
+    <button class="ghost" id="btnFokus" title="Dölj panelerna på sidorna"><svg class="pikt"><use href="#p-paneler"/></svg><span class="txt">Dölj inställningar</span></button>
+    <span class="spacer" style="flex:1"></span>
+    <div class="slider"><span>Zoom</span><input type="range" id="zoom" min="30" max="150" value="70"><span class="varde" id="zoomV">70 %</span></div>
+    <div class="slider"><span>Skrivfart</span><input type="range" id="fart" min="1" max="10" value="5"></div>
+  </div>
+</div>
+
+<!-- ======== TEXT ======== -->
+<div class="overlay" id="ovText">
+  <div class="modal">
+    <div class="mhead"><h3>Skriv in text på sidan</h3><button data-close aria-label="Stäng"><svg class="pikt"><use href="#p-stang"/></svg></button></div>
+    <p class="hint">Välj hur många gånger texten ska upprepas och lägg ut den antingen som blek förlaga
+    att spåra eller som färdig skriven text.</p>
+
+    <div class="field">
+      <label>Snabbval</label>
+      <div class="presets" id="snabbval">
+        <button class="chip" data-t="ABCDEFGHIJKLMNOPQRSTUVWXYZÅÄÖ">A–Ö versaler</button>
+        <button class="chip" data-t="abcdefghijklmnopqrstuvwxyzåäö">a–ö gemener</button>
+        <button class="chip" data-t="0 1 2 3 4 5 6 7 8 9">0–9 siffror</button>
+        <button class="chip" data-t="a å ä e i o ö u y">Vokaler</button>
+        <button class="chip" data-t="måndag tisdag onsdag torsdag fredag lördag söndag">Veckodagar</button>
+        <button class="chip" data-t="januari februari mars april maj juni juli augusti september oktober november december">Månader</button>
+        <button class="chip" data-t="Yxskaftbud, ge vår WC-zonmö IQ-hjälp.">Pangram</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Text att skriva</label>
+      <textarea id="txtText" placeholder="Till exempel: Flygande bäckasiner söka hwila på mjuka tuvor."></textarea>
+    </div>
+
+    <div class="grid2">
+      <div class="field">
+        <label>Antal upprepningar</label>
+        <input type="number" id="txtAntal" value="1" min="1" max="200">
+      </div>
+      <div class="field">
+        <label>Textstorlek</label>
+        <select id="txtStorlek">
+          <option value="auto">Anpassa till linjatur</option>
+          <option value="24">Liten</option>
+          <option value="36">Mellan</option>
+          <option value="52">Stor</option>
+          <option value="76">Extra stor</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Typsnitt</label>
+      <select id="txtFont">
+        <option value="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">Tydlig grundskrift</option>
+        <option value="'Comic Sans MS', 'Segoe Print', cursive">Rundstil, enkla bokstavsformer</option>
+        <option value="Georgia, 'Times New Roman', serif">Klassisk antikva</option>
+        <option value="'Segoe Script', 'Bradley Hand', cursive">Skrivstil</option>
+        <option value="'Lucida Handwriting', 'Brush Script MT', cursive">Kalligrafi</option>
+        <option value="'Courier New', monospace">Skrivmaskin</option>
+        <option value="Verdana, Tahoma, sans-serif">Extra tydlig</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Textfärg</label>
+      <div class="swatches" id="txtFarg" style="grid-template-columns:repeat(8,1fr)"></div>
+      <div class="valdfarg" id="valdTxtFarg"></div>
+    </div>
+
+    <div class="mfoot">
+      <button class="big sekundar" id="btnForlaga"><svg class="pikt"><use href="#p-oga"/></svg>Lägg ut som förlaga</button>
+      <button class="big" id="btnSkrivText"><svg class="pikt"><use href="#p-penna"/></svg>Skriv texten</button>
+    </div>
+    <button class="ghost" id="btnRensaForlaga" style="margin-top:12px; width:100%">Ta bort förlagan</button>
+  </div>
+</div>
+
+<!-- ======== HJÄLP ======== -->
+<div class="overlay" id="ovHjalp">
+  <div class="modal">
+    <div class="mhead"><h3>Så använder du Skrivövaren</h3><button data-close aria-label="Stäng"><svg class="pikt"><use href="#p-stang"/></svg></button></div>
+    <ol style="padding-left:20px">
+      <li>Välj penna i vänsterpanelen: tjocklek, pennsort och bläckfärg.</li>
+      <li>Välj linjatur och pappersfärg i högerpanelen.</li>
+      <li>Skriv bokstaven för hand med mus, pekskärm eller penna. Verktyget spelar in varje drag.</li>
+      <li>Tryck Spela upp. Bokstaven ritas i samma ordning och riktning som du skrev den, med en
+          pennmarkör som visar var pennan är. Slå på Spela om och om igen när klassen ska öva med,
+          och Visa dragordning för numrerade startpunkter.</li>
+      <li>Spara bokstaven i biblioteket med ett namn. Nästa lektion klickar du på namnet så spelas
+          den upp igen, även efter omstart.</li>
+      <li>Gör din handstil till förlaga: bokstaven bleknar ut och eleven skriver ovanpå.
+          Tryck flera gånger för att bygga en hel rad.</li>
+      <li>Skriv ut eller spara som bild eller PDF från högerpanelen.</li>
+    </ol>
+    <div class="faq">
+      <details><summary>Fungerar det på Chromebook?</summary><p>Ja. Verktyget är en enda HTML-fil som körs i webbläsaren. Inget att installera, inget konto, ingen inloggning.</p></details>
+      <details><summary>Fungerar det utan nät?</summary><p>Ja. Spara filen lokalt eller i Drive och öppna den. Allt fungerar offline.</p></details>
+      <details><summary>Sparas det jag skriver någonstans?</summary><p>Nej. Ingenting lämnar datorn. Inställningar och sparade bokstäver ligger lokalt i webbläsaren. Ingen elevdata samlas in.</p></details>
+      <details><summary>Vad är skillnaden på linjaturerna?</summary><p>Skrivlinjer och fyrlinjesystem används vid bokstavsinlärning: överlinje, mittlinje, baslinje och underlinje visar var stapel, kropp och nedgång ska sluta. Montessori färglägger samma zoner. Sneda hjälplinjer stöttar jämn lutning i skrivstil.</p></details>
+      <details><summary>Hur delar jag ut en uppgift till eleverna?</summary><p>Ställ in penna, linjatur och text och kopiera länken med inställningar. Eleven öppnar den och får samma uppsättning. Handskrivna drag följer inte med i länken, bara inställningar och text.</p></details>
+      <details><summary>Hur delar jag mina inspelade bokstäver med en kollega?</summary><p>Exportera biblioteket. Du får en JSON-fil som kan ligga i en delad Drive-mapp. Kollegan öppnar Skrivövaren och importerar den.</p></details>
+      <details><summary>Varför räcker det inte att visa den färdiga bokstaven?</summary><p>En färdig bokstav visar formen men inte vägen dit. Dragordning, riktning och pennlyft är det eleverna behöver se för att bygga en automatiserad handstil.</p></details>
+      <details><summary>Vad ska jag tänka på vid smartboard?</summary><p>Slå på Tavelläge i bottenraden. Kontroller och text blir större och lättare att träffa på håll. Dölj inställningar tar bort panelerna så att bara skrivytan syns. Välj sidformatet Tavla 16:9 så fyller skrivytan hela tavlan, ta en tjock penna och kör helskärm.</p></details>
+      <details><summary>Vad händer om jag lutar handen mot tavlan?</summary><p>Verktyget ritar bara med den punkt som startade draget. Ett andra finger eller en handlove som landar mitt i ett drag ignoreras. Sätter du ner en penna mitt i ett fingerdrag tar pennan över.</p></details>
+      <details><summary>Hur suddar jag utan att rensa allt?</summary><p>Välj pennsorten Sudd och stryk över det du vill ta bort. Rensa tömmer hela sidan, Ångra tar bort ett drag i taget.</p></details>
+    </div>
+    <p class="hint" style="margin-top:20px">Skrivövaren är skapad av Magnus MacNeil.</p>
+  </div>
+</div>
+
+<div id="printArea"><img id="printImg" alt=""></div>
+<script>
+(function(){
+"use strict";
+
+/* =========================================================
+   Skrivövaren – visar hur bokstaver skrivs
+   Allt körs lokalt i webbläsaren. Inget nätverk, inga nycklar.
+   ========================================================= */
+
+var MM = 5.905;                    // px per mm (A4 @ 150 dpi)
+var PAGE = { w: 1240, h: 1754 };   // stående A4
+
+var PENNFARGER = [
+  {n:'Svart',c:'#111111'},  {n:'Mörkblå',c:'#16325c'}, {n:'Blå',c:'#1d6fd0'},
+  {n:'Röd',c:'#c62828'},    {n:'Grön',c:'#2e7d32'},    {n:'Lila',c:'#6a1b9a'},
+  {n:'Orange',c:'#e65100'}, {n:'Rosa',c:'#d81b60'},    {n:'Brun',c:'#5d4037'},
+  {n:'Turkos',c:'#00838f'}, {n:'Grå',c:'#616161'}
+];
+var SIDFARGER = [
+  {n:'Vit',c:'#ffffff'},{n:'Gräddvit',c:'#fdfaf1'},{n:'Ljusgul',c:'#fdf5d4'},{n:'Ljusblå',c:'#e7f1fb'},
+  {n:'Ljusgrön',c:'#e9f6ea'},{n:'Ljusrosa',c:'#fceef2'},{n:'Persika',c:'#fdf0e4'},{n:'Ljusgrå',c:'#f1f2f4'}
+];
+// row = radhöjd i mm, base = baslinjens läge i raden, multi = fler hjälplinjer
+var LINJ = {
+  blank:       {row:12, base:9,  multi:false},
+  linjerat:    {row:8,  base:8,  multi:false},
+  punkt:       {row:8,  base:8,  multi:false},
+  rutat5:      {row:10, base:10, multi:false},
+  rutat10:     {row:10, base:10, multi:false},
+  skrivlinjer: {row:12, base:8,  multi:true},
+  fyrlinje:    {row:14, base:8,  multi:true},
+  montessori:  {row:12, base:8,  multi:true},
+  sned:        {row:8,  base:8,  multi:false},
+  kollegie:    {row:8,  base:8,  multi:false}
+};
+
+var S = {
+  fokus:false,
+  pennstorlek:11, penntyp:'penna', pennfarg:'#111111',
+  linjatur:'linjerat', sidfarg:'#ffffff', format:'staende',
+  spar:false, markor:true, nummer:false, naturlig:false, slinga:false,
+  zoom:70, fart:5, tema:'ljus', tavla:false
+};
+
+var NOLL = {x:0, y:0};
+
+var items = [];                       // {kind:'stroke'|'text', ...}
+var undone = [];
+var guide = [];                       // förlagetext
+var bibliotek = [];                   // sparade bokstavsmodeller
+var anim = null;
+
+var cBg = document.getElementById('cBg');
+var cFo = document.getElementById('cForlaga');
+var cIn = document.getElementById('cInk');
+var cMk = document.getElementById('cMark');
+var xBg = cBg.getContext('2d');
+var xFo = cFo.getContext('2d');
+var xIn = cIn.getContext('2d');
+var xMk = cMk.getContext('2d');
+var wrap = document.getElementById('pagewrap');
+
+function $(id){ return document.getElementById(id); }
+function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+
+/* ---------------- Sidgeometri ---------------- */
+function layout(){
+  var L = LINJ[S.linjatur];
+  var left  = (S.linjatur === 'kollegie' ? 28 : 18) * MM;
+  var right = PAGE.w - 12 * MM;
+  var top   = 15 * MM;
+  var bot   = PAGE.h - 12 * MM;
+  var rowH  = L.row * MM;
+  var bases = [];
+  for (var y = top; y + rowH <= bot + 1; y += rowH) bases.push(y + L.base*MM);
+  return {left:left, right:right, top:top, bottom:bot, rowH:rowH, bases:bases, multi:L.multi};
+}
+
+/* ---------------- Bakgrund / linjatur ---------------- */
+function drawBg(){
+  xBg.save();
+  xBg.clearRect(0,0,PAGE.w,PAGE.h);
+  xBg.fillStyle = S.sidfarg;
+  xBg.fillRect(0,0,PAGE.w,PAGE.h);
+
+  var g = layout();
+  var LINE = 'rgba(120,150,185,.55)';
+  var LINE_S = 'rgba(120,150,185,.32)';
+  var RED  = 'rgba(214,120,120,.85)';
+  var i, y, x;
+
+  function hline(y, col, w, dash){
+    xBg.beginPath(); xBg.strokeStyle = col; xBg.lineWidth = w || 1.4;
+    xBg.setLineDash(dash || []);
+    xBg.moveTo(g.left, y); xBg.lineTo(g.right, y); xBg.stroke(); xBg.setLineDash([]);
+  }
+
+  if (S.linjatur === 'linjerat') {
+    for (i=0;i<g.bases.length;i++) hline(g.bases[i], LINE);
+  }
+  else if (S.linjatur === 'punkt') {
+    for (i=0;i<g.bases.length;i++) hline(g.bases[i], LINE, 1.6, [2,9]);
+  }
+  else if (S.linjatur === 'rutat5' || S.linjatur === 'rutat10') {
+    var step = (S.linjatur === 'rutat5' ? 5 : 10) * MM;
+    xBg.strokeStyle = LINE_S; xBg.lineWidth = 1.1; xBg.beginPath();
+    for (y = g.top; y <= g.bottom; y += step){ xBg.moveTo(g.left, y); xBg.lineTo(g.right, y); }
+    for (x = g.left; x <= g.right; x += step){ xBg.moveTo(x, g.top); xBg.lineTo(x, g.bottom); }
+    xBg.stroke();
+  }
+  else if (S.linjatur === 'skrivlinjer') {
+    for (i=0;i<g.bases.length;i++){
+      var b = g.bases[i];
+      hline(b - 8*MM, LINE_S);            // överlinje
+      hline(b - 4*MM, LINE_S, 1.2, [4,6]);// mittlinje
+      hline(b, LINE, 1.8);                // baslinje
+    }
+  }
+  else if (S.linjatur === 'fyrlinje') {
+    for (i=0;i<g.bases.length;i++){
+      var b2 = g.bases[i];
+      hline(b2 - 8*MM, LINE_S);
+      hline(b2 - 4*MM, LINE_S, 1.2, [4,6]);
+      hline(b2, LINE, 1.8);
+      hline(b2 + 3*MM, LINE_S);           // underlinje
+    }
+  }
+  else if (S.linjatur === 'montessori') {
+    for (i=0;i<g.bases.length;i++){
+      var b3 = g.bases[i];
+      xBg.fillStyle = 'rgba(126,190,235,.30)'; xBg.fillRect(g.left, b3-8*MM, g.right-g.left, 4*MM);
+      xBg.fillStyle = 'rgba(140,205,140,.34)'; xBg.fillRect(g.left, b3-4*MM, g.right-g.left, 4*MM);
+      xBg.fillStyle = 'rgba(196,160,120,.30)'; xBg.fillRect(g.left, b3,      g.right-g.left, 3*MM);
+      hline(b3, 'rgba(90,120,150,.6)', 1.6);
+    }
+  }
+  else if (S.linjatur === 'sned') {
+    for (i=0;i<g.bases.length;i++) hline(g.bases[i], LINE);
+    var lean = Math.tan(15*Math.PI/180) * (g.bottom-g.top);
+    xBg.save();
+    xBg.beginPath(); xBg.rect(g.left, g.top-2, g.right-g.left, g.bottom-g.top+4); xBg.clip();
+    xBg.strokeStyle = 'rgba(150,175,205,.5)'; xBg.lineWidth = 1;
+    xBg.beginPath();
+    for (x = g.left - lean; x <= g.right; x += 15*MM){
+      xBg.moveTo(x, g.bottom); xBg.lineTo(x + lean, g.top);
+    }
+    xBg.stroke(); xBg.restore();
+  }
+  else if (S.linjatur === 'kollegie') {
+    for (i=0;i<g.bases.length;i++) hline(g.bases[i], LINE);
+    xBg.beginPath(); xBg.strokeStyle = RED; xBg.lineWidth = 1.6;
+    xBg.moveTo(g.left - 6*MM, g.top - 6*MM); xBg.lineTo(g.left - 6*MM, g.bottom + 4*MM); xBg.stroke();
+    xBg.beginPath(); xBg.moveTo(12*MM, g.top - 6*MM); xBg.lineTo(g.right, g.top - 6*MM); xBg.stroke();
+  }
+  xBg.restore();
+}
+
+/* ---------------- Rita drag ---------------- */
+function segBredd(a, b, st){
+  var dx = b.x-a.x, dy = b.y-a.y;
+  var d = Math.sqrt(dx*dx+dy*dy);
+  var dt = Math.max(4, b.t-a.t);
+  if (st.type === 'penna'){
+    var v = d/dt;
+    return st.size * clamp(1.30 - v*0.30, 0.5, 1.35);
+  }
+  if (st.type === 'gaspenna'){
+    var ang = Math.atan2(dy, dx);
+    return st.size * (0.18 + 1.45 * Math.abs(Math.sin(ang + Math.PI/4)));
+  }
+  return st.size;
+}
+function ritaSeg(ctx, a, b, st, off){
+  var ax=a.x+off.x, ay=a.y+off.y, bx=b.x+off.x, by=b.y+off.y;
+  if (st.type === 'blyerts'){
+    ctx.strokeStyle = st.color; ctx.lineCap='round'; ctx.lineJoin='round';
+    var a0 = ctx.globalAlpha;
+    ctx.globalAlpha = a0 * 0.16;
+    for (var k=0;k<5;k++){
+      var j = st.size*0.45;
+      ctx.lineWidth = Math.max(0.7, st.size*(0.35+Math.random()*0.35));
+      ctx.beginPath();
+      ctx.moveTo(ax+(Math.random()-0.5)*j, ay+(Math.random()-0.5)*j);
+      ctx.lineTo(bx+(Math.random()-0.5)*j, by+(Math.random()-0.5)*j);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = a0;
+    return;
+  }
+  if (st.type === 'sudd'){
+    var kvar = ctx.globalCompositeOperation;
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.strokeStyle = '#000'; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.lineWidth = st.size * 3;
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+    ctx.globalCompositeOperation = kvar;
+    return;
+  }
+  ctx.strokeStyle = st.color; ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.lineWidth = segBredd(a,b,st);
+  ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+}
+function ritaStroke(ctx, st, off, tillIdx){
+  var n = (tillIdx === undefined) ? st.pts.length : Math.min(tillIdx, st.pts.length);
+  if (n === 1){
+    if (st.type === 'sudd'){
+      var kvar = ctx.globalCompositeOperation;
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = '#000'; ctx.beginPath();
+      ctx.arc(st.pts[0].x+off.x, st.pts[0].y+off.y, st.size*1.5, 0, 6.284); ctx.fill();
+      ctx.globalCompositeOperation = kvar;
+      return;
+    }
+    ctx.fillStyle = st.color; ctx.beginPath();
+    ctx.arc(st.pts[0].x+off.x, st.pts[0].y+off.y, st.size/2, 0, 6.284); ctx.fill();
+    return;
+  }
+  for (var i=1;i<n;i++) ritaSeg(ctx, st.pts[i-1], st.pts[i], st, off);
+}
+function ritaText(ctx, t, off, tillTecken){
+  var s = (tillTecken === undefined) ? t.text : t.text.slice(0, tillTecken);
+  if (!s) return;
+  ctx.save();
+  ctx.font = t.size + 'px ' + t.font;
+  ctx.fillStyle = t.color;
+  ctx.textBaseline = 'alphabetic';
+  if (t.alpha) ctx.globalAlpha = t.alpha;
+  ctx.fillText(s, t.x + off.x, t.y + off.y);
+  ctx.restore();
+}
+function ritaItem(ctx, it, off, prog){
+  if (it.kind === 'stroke') ritaStroke(ctx, it, off, prog);
+  else ritaText(ctx, it, off, prog);
+}
+
+function redrawInk(){
+  xIn.clearRect(0,0,PAGE.w,PAGE.h);
+  for (var i=0;i<items.length;i++) ritaItem(xIn, items[i], NOLL);
+}
+function redrawGuide(){
+  xFo.clearRect(0,0,PAGE.w,PAGE.h);
+  var drag = [], i;
+  for (i=0;i<guide.length;i++){
+    if (guide[i].kind === 'stroke') drag.push(guide[i]);
+    else ritaText(xFo, guide[i], NOLL);
+  }
+  if (!drag.length) return;
+  // Dragen ritas forst i full styrka pa en egen yta, sa att suddningar
+  // verkligen tar bort blacket, och blek sedan ner hela lagret pa en gang.
+  var tmp = document.createElement('canvas');
+  tmp.width = PAGE.w; tmp.height = PAGE.h;
+  var xt = tmp.getContext('2d');
+  for (i=0;i<drag.length;i++) ritaStroke(xt, drag[i], NOLL);
+  xFo.save();
+  xFo.globalAlpha = drag[0].alpha || 0.22;
+  xFo.drawImage(tmp, 0, 0);
+  xFo.restore();
+}
+
+/* ---------------- Handskrift ---------------- */
+var aktiv = null, aktivId = null, aktivTyp = null;
+function pos(e){
+  var r = cIn.getBoundingClientRect();
+  return { x:(e.clientX-r.left) * PAGE.w / r.width,
+           y:(e.clientY-r.top)  * PAGE.h / r.height,
+           t:performance.now() };
+}
+cIn.addEventListener('pointerdown', function(e){
+  if (aktivId !== null){
+    // Handloven eller ett andra finger ska inte kunna kapa draget.
+    // Undantag: en riktig penna får ta över från ett fingerdrag.
+    if (!(e.pointerType === 'pen' && aktivTyp === 'touch')) return;
+    aktiv = null; redrawInk();
+  }
+  if (anim) stoppa();
+  aktivId = e.pointerId; aktivTyp = e.pointerType;
+  try { cIn.setPointerCapture(e.pointerId); } catch(err){}
+  aktiv = { kind:'stroke', pts:[pos(e)], color:S.pennfarg, size:S.pennstorlek, type:S.penntyp };
+  undone = [];
+});
+cIn.addEventListener('pointermove', function(e){
+  if (!aktiv || e.pointerId !== aktivId) return;
+  var p = pos(e), prev = aktiv.pts[aktiv.pts.length-1];
+  if (Math.abs(p.x-prev.x) < 0.8 && Math.abs(p.y-prev.y) < 0.8) return;
+  aktiv.pts.push(p);
+  ritaSeg(xIn, prev, p, aktiv, {x:0,y:0});
+});
+function slutaRita(e){
+  if (e && e.pointerId !== undefined && aktivId !== null && e.pointerId !== aktivId) return;
+  aktivId = null; aktivTyp = null;
+  if (!aktiv) return;
+  items.push(aktiv); aktiv = null; redrawInk(); ritaOverlay(null);
+}
+cIn.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+cIn.addEventListener('pointerup', slutaRita);
+cIn.addEventListener('pointercancel', slutaRita);
+window.addEventListener('pointerup', slutaRita);
+
+/* ---------------- Textutläggning ---------------- */
+function radbryt(ctx, text, font, size, bredd){
+  ctx.font = size + 'px ' + font;
+  var ord = text.split(/\s+/).filter(Boolean);
+  var rader = [], cur = '';
+  for (var i=0;i<ord.length;i++){
+    var test = cur ? cur + ' ' + ord[i] : ord[i];
+    if (ctx.measureText(test).width > bredd && cur){ rader.push(cur); cur = ord[i]; }
+    else cur = test;
+  }
+  if (cur) rader.push(cur);
+  return rader.length ? rader : [''];
+}
+function byggTextrader(text, antal, fontVal, storlekVal, farg, alpha){
+  var g = layout();
+  var bredd = g.right - g.left;
+  var size = (storlekVal === 'auto') ? Math.round(g.rowH * (g.multi ? 0.72 : 0.60)) : parseInt(storlekVal,10);
+  var block = radbryt(xIn, text, fontVal, size, bredd);
+  var ut = [], rad = 0;
+  for (var n=0;n<antal;n++){
+    for (var j=0;j<block.length;j++){
+      if (rad >= g.bases.length) return ut;
+      ut.push({ kind:'text', text:block[j], x:g.left+2, y:g.bases[rad],
+                font:fontVal, size:size, color:farg, alpha:alpha });
+      rad++;
+    }
+  }
+  return ut;
+}
+
+/* ---------------- Uppspelning ----------------
+   Visar HUR nagot skrevs: dragen ritas i samma ordning och riktning som
+   lararen gjorde dem, med pennmarkor och numrerad dragordning. */
+
+function dragStart(i){
+  var it = items[i];
+  if (it.kind === 'stroke') return {x:it.pts[0].x, y:it.pts[0].y};
+  return {x:it.x, y:it.y - it.size*0.62};
+}
+function ritaNummer(ctx, tom){
+  if (!S.nummer) return;
+  var max = (tom === undefined) ? items.length-1 : tom;
+  var nr = 0;
+  for (var i=0;i<items.length;i++){
+    if (items[i].kind === 'stroke' && items[i].type === 'sudd') continue;
+    nr++;
+    if (i > max) break;
+    var p = dragStart(i), r = Math.max(13, PAGE.w/70);
+    var cx = p.x - r*1.15, cy = p.y - r*1.15;
+    ctx.save();
+    ctx.beginPath(); ctx.fillStyle = '#1A1A18'; ctx.globalAlpha = 0.92;
+    ctx.arc(cx, cy, r, 0, 6.284); ctx.fill();
+    ctx.globalAlpha = 1; ctx.fillStyle = '#ffffff';
+    ctx.font = '500 ' + Math.round(r*1.3) + 'px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(nr), cx, cy+1);
+    ctx.restore();
+  }
+}
+function ritaOverlay(kurs, tom){
+  xMk.clearRect(0,0,PAGE.w,PAGE.h);
+  ritaNummer(xMk, tom);
+  if (S.markor && kurs){
+    var r = Math.max(20, PAGE.w/45);
+    xMk.save();
+    xMk.beginPath(); xMk.fillStyle = 'rgba(159,225,203,.55)';
+    xMk.arc(kurs.x, kurs.y, r, 0, 6.284); xMk.fill();
+    xMk.beginPath(); xMk.fillStyle = '#04342C';
+    xMk.arc(kurs.x, kurs.y, r*0.36, 0, 6.284); xMk.fill();
+    xMk.strokeStyle = '#ffffff'; xMk.lineWidth = 3; xMk.stroke();
+    xMk.restore();
+  }
+}
+
+/* Tidsplan: varje steg ar en punkt (eller ett tecken) med en tidpunkt i ms. */
+function byggPlan(){
+  var steg = [], t = 0, i, j;
+  for (i=0;i<items.length;i++){
+    var it = items[i];
+    if (it.kind === 'stroke'){
+      if (it.pts.length === 1){ t += 60; steg.push({i:i, p:1, t:t}); }
+      for (j=1;j<it.pts.length;j++){
+        var d = S.naturlig ? clamp(it.pts[j].t - it.pts[j-1].t, 4, 220) : 9;
+        t += d;
+        steg.push({i:i, p:j+1, t:t});
+      }
+      t += S.naturlig ? 300 : 190;
+    } else {
+      for (j=1;j<=it.text.length;j++){ t += 42; steg.push({i:i, p:j, t:t}); }
+      t += 220;
+    }
+  }
+  return {steg:steg, langd:t};
+}
+
+function sattPausKnapp(){
+  var k = $('btnPaus');
+  var pausad = !!(anim && anim.pausad);
+  k.disabled = !anim;
+  k.querySelector('.txt').textContent = pausad ? 'Fortsätt' : 'Paus';
+  k.querySelector('use').setAttribute('href', pausad ? '#p-spela' : '#p-paus');
+  k.classList.toggle('on', pausad);
+}
+function pausa(){
+  if (!anim || anim.pausad) return;
+  anim.pausad = true;
+  cancelAnimationFrame(anim.raf);
+  sattPausKnapp();
+}
+function fortsatt(){
+  if (!anim || !anim.pausad) return;
+  anim.pausad = false;
+  anim.sist = performance.now();          // annars hoppar klockan fram över pausen
+  anim.raf = requestAnimationFrame(steg);
+  sattPausKnapp();
+}
+function sattSpelKnapp(spelar){
+  var k = $('btnSpela');
+  k.querySelector('.txt').textContent = spelar ? 'Stoppa' : 'Spela upp';
+  k.querySelector('use').setAttribute('href', spelar ? '#p-stopp' : '#p-spela');
+  k.classList.toggle('stop', spelar);
+}
+function stoppa(){
+  if (anim){ cancelAnimationFrame(anim.raf); anim = null; }
+  sattSpelKnapp(false);
+  sattPausKnapp();
+  redrawInk();
+  ritaOverlay(null);
+}
+function spelaUpp(){
+  if (anim){ stoppa(); return; }
+  // Ett ögonblick av lek, och bara ett: det annars döda trycket på tomt papper.
+  if (!items.length){ blink('Tomt papper. Uppspelningen blev kort.'); return; }
+  anim = { plan:byggPlan(), pek:0, klocka:0, klara:-1, kurs:null,
+           sist:performance.now(), raf:0, pausad:false };
+  xIn.clearRect(0,0,PAGE.w,PAGE.h);
+  ritaOverlay(null, -1);
+  sattSpelKnapp(true);
+  sattPausKnapp();
+  anim.raf = requestAnimationFrame(steg);
+}
+function omstart(){
+  anim.pek = 0; anim.klocka = 0; anim.klara = -1; anim.kurs = null;
+  xIn.clearRect(0,0,PAGE.w,PAGE.h);
+}
+function steg(nu){
+  if (!anim) return;
+  var dt = Math.min(90, nu - anim.sist); anim.sist = nu;
+  anim.klocka += dt * (S.fart/5);
+
+  var plan = anim.plan.steg, vakt = 0;
+  while (anim.pek < plan.length && plan[anim.pek].t <= anim.klocka && vakt++ < 8000){
+    var st = plan[anim.pek], it = items[st.i];
+    if (it.kind === 'stroke'){
+      if (st.p >= 2) ritaSeg(xIn, it.pts[st.p-2], it.pts[st.p-1], it, NOLL);
+      else ritaStroke(xIn, it, NOLL, 1);
+      anim.kurs = {x:it.pts[st.p-1].x, y:it.pts[st.p-1].y};
+    } else {
+      xIn.save();
+      xIn.font = it.size + 'px ' + it.font;
+      xIn.fillStyle = it.color; xIn.textBaseline = 'alphabetic';
+      if (it.alpha) xIn.globalAlpha = it.alpha;
+      var dx = xIn.measureText(it.text.slice(0, st.p-1)).width;
+      xIn.fillText(it.text.charAt(st.p-1), it.x + dx, it.y);
+      xIn.restore();
+      anim.kurs = {x:it.x + dx, y:it.y - it.size*0.25};
+    }
+    anim.klara = st.i;
+    anim.pek++;
+  }
+  ritaOverlay(anim.kurs, anim.klara);
+
+  if (anim.pek >= plan.length && anim.klocka > anim.plan.langd + 800){
+    if (S.slinga){ omstart(); }
+    else { stoppa(); return; }
+  }
+  anim.raf = requestAnimationFrame(steg);
+}
+
+/* ---------------- Bokstavsbibliotek ---------------- */
+function laddaBibliotek(){
+  try { bibliotek = JSON.parse(localStorage.getItem('skrivovaren_bokstaver') || '[]') || []; }
+  catch(e){ bibliotek = []; }
+}
+function sparaBibliotek(){
+  try { localStorage.setItem('skrivovaren_bokstaver', JSON.stringify(bibliotek)); }
+  catch(e){ blink('Lagringen är full. Bokstaven sparades inte.'); }
+}
+function komprimera(lista){
+  return lista.map(function(it){
+    if (it.kind !== 'stroke') return JSON.parse(JSON.stringify(it));
+    var t0 = it.pts[0].t;
+    return { kind:'stroke', color:it.color, size:it.size, type:it.type,
+             pts: it.pts.map(function(q){
+               return {x:Math.round(q.x*10)/10, y:Math.round(q.y*10)/10, t:Math.round(q.t-t0)};
+             })};
+  });
+}
+function skalaItems(lista, k){
+  for (var i=0;i<lista.length;i++){
+    var it = lista[i];
+    if (it.kind === 'stroke'){
+      it.size *= k;
+      for (var j=0;j<it.pts.length;j++){ it.pts[j].x *= k; it.pts[j].y *= k; }
+    } else { it.x *= k; it.y *= k; it.size *= k; }
+  }
+}
+function laddaBokstav(i){
+  var b = bibliotek[i]; if (!b) return;
+  if (anim) stoppa();
+  items = JSON.parse(JSON.stringify(b.items));
+  if (b.w && b.h && (b.w !== PAGE.w || b.h !== PAGE.h))
+    skalaItems(items, Math.min(PAGE.w/b.w, PAGE.h/b.h));
+  undone = [];
+  $('bokstavNamn').value = b.namn;
+  redrawInk();
+  spelaUpp();
+}
+function visaBibliotek(){
+  var box = $('bibliotek');
+  box.innerHTML = '';
+  if (!bibliotek.length){
+    var tom = document.createElement('span');
+    tom.className = 'tom'; tom.textContent = 'Inga sparade bokstäver än.';
+    box.appendChild(tom); return;
+  }
+  bibliotek.forEach(function(b, i){
+    var el = document.createElement('span'); el.className = 'bk';
+    var nm = document.createElement('b');
+    nm.textContent = b.namn; nm.title = 'Visa och spela upp "' + b.namn + '"';
+    nm.addEventListener('click', function(){ laddaBokstav(i); });
+    var x = document.createElement('button');
+    x.className = 'x'; x.title = 'Ta bort ' + b.namn;
+    x.setAttribute('aria-label', 'Ta bort ' + b.namn);
+    x.innerHTML = '<svg class="pikt"><use href="#p-stang"/></svg>';
+    x.addEventListener('click', function(){
+      bibliotek.splice(i,1); sparaBibliotek(); visaBibliotek();
+    });
+    el.appendChild(nm); el.appendChild(x); box.appendChild(el);
+  });
+}
+
+/* ---------------- Storlek / zoom ---------------- */
+function sattFormat(){
+  PAGE = (S.format === 'liggande') ? {w:1754, h:1240}
+       : (S.format === 'tavla')     ? {w:1920, h:1080}
+       :                              {w:1240, h:1754};
+  [cBg,cFo,cIn,cMk].forEach(function(c){ c.width = PAGE.w; c.height = PAGE.h; });
+  sattZoom(); drawBg(); redrawGuide(); redrawInk(); ritaOverlay(null);
+}
+function sattZoom(){
+  var w = PAGE.w * S.zoom/100;
+  wrap.style.width  = w + 'px';
+  wrap.style.height = (PAGE.h * S.zoom/100) + 'px';
+  $('zoomV').textContent = S.zoom + ' %';
+}
+
+/* ---------------- Export ---------------- */
+function komposit(){
+  var c = document.createElement('canvas');
+  c.width = PAGE.w; c.height = PAGE.h;
+  var x = c.getContext('2d');
+  x.drawImage(cBg,0,0);
+  if (S.spar) x.drawImage(cFo,0,0);
+  x.drawImage(cIn,0,0);
+  ritaNummer(x);
+  return c;
+}
+function laddaNerPng(){
+  var a = document.createElement('a');
+  a.download = 'skrivovaren-' + new Date().toISOString().slice(0,10) + '.png';
+  a.href = komposit().toDataURL('image/png');
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function skrivUt(){
+  var img = $('printImg');
+  img.onload = function(){ setTimeout(function(){ window.print(); }, 80); };
+  img.src = komposit().toDataURL('image/png');
+}
+
+/* ---------------- Inställningar: spara / länk ---------------- */
+function samla(){
+  return { p:S.pennstorlek, t:S.penntyp, f:S.pennfarg, l:S.linjatur, s:S.sidfarg,
+           fo:S.format, sp:S.spar, mk:S.markor, nr:S.nummer, nf:S.naturlig, sl:S.slinga,
+           z:S.zoom, v:S.fart,
+           tx:$('txtText').value, ta:$('txtAntal').value, tf:$('txtFont').value,
+           ts:$('txtStorlek').value, tc:txtFargVal };
+}
+function tillampa(o){
+  if (!o) return;
+  if (o.p) S.pennstorlek = +o.p;
+  if (o.t) S.penntyp = o.t;
+  if (o.f) S.pennfarg = o.f;
+  if (o.l) S.linjatur = o.l;
+  if (o.s) S.sidfarg = o.s;
+  if (o.fo) S.format = o.fo;
+  if (o.z) S.zoom = +o.z;
+  if (o.v) S.fart = +o.v;
+  S.spar = !!o.sp;
+  if (o.mk !== undefined) S.markor = !!o.mk;
+  S.nummer = !!o.nr; S.naturlig = !!o.nf; S.slinga = !!o.sl;
+  if (o.tx !== undefined) $('txtText').value = o.tx;
+  if (o.ta) $('txtAntal').value = o.ta;
+  if (o.tf) $('txtFont').value = o.tf;
+  if (o.ts) $('txtStorlek').value = o.ts;
+  if (o.tc) txtFargVal = o.tc;
+  syncUI();
+}
+function spara(){
+  try { localStorage.setItem('skrivovaren_v1', JSON.stringify(samla())); } catch(e){}
+}
+function b64(str){ return btoa(unescape(encodeURIComponent(str))); }
+function unb64(str){ return decodeURIComponent(escape(atob(str))); }
+
+/* ---------------- UI-koppling ---------------- */
+function gruppKlick(id, satt){
+  var box = $(id);
+  box.addEventListener('click', function(e){
+    var b = e.target.closest('.chip'); if (!b) return;
+    var alla = box.querySelectorAll('.chip');
+    for (var i=0;i<alla.length;i++) alla[i].classList.remove('on');
+    b.classList.add('on');
+    satt(b.getAttribute('data-v'));
+    spara();
+  });
+}
+function markera(id, v){
+  var alla = $(id).querySelectorAll('.chip');
+  for (var i=0;i<alla.length;i++)
+    alla[i].classList.toggle('on', alla[i].getAttribute('data-v') === String(v));
+}
+
+var txtFargVal = '#111111';
+function byggFargrutor(){
+  var pf = $('pennfarg'), i, b;
+  for (i=0;i<PENNFARGER.length;i++){
+    b = document.createElement('button');
+    b.className = 'sw'; b.style.background = PENNFARGER[i].c;
+    b.title = PENNFARGER[i].n; b.setAttribute('aria-label', PENNFARGER[i].n);
+    b.setAttribute('data-c', PENNFARGER[i].c);
+    pf.appendChild(b);
+  }
+  pf.addEventListener('click', function(e){
+    var t = e.target.closest('.sw'); if (!t) return;
+    S.pennfarg = t.getAttribute('data-c'); syncFarger(); spara();
+  });
+
+  var sf = $('sidfarg');
+  for (i=0;i<SIDFARGER.length;i++){
+    b = document.createElement('button');
+    b.className = 'swp'; b.style.background = SIDFARGER[i].c;
+    b.title = SIDFARGER[i].n; b.setAttribute('aria-label', SIDFARGER[i].n);
+    b.setAttribute('data-c', SIDFARGER[i].c);
+    sf.appendChild(b);
+  }
+  sf.addEventListener('click', function(e){
+    var t = e.target.closest('.swp'); if (!t) return;
+    S.sidfarg = t.getAttribute('data-c'); syncFarger(); drawBg(); spara();
+  });
+
+  var tf = $('txtFarg');
+  for (i=0;i<8;i++){
+    b = document.createElement('button');
+    b.className = 'sw'; b.style.background = PENNFARGER[i].c;
+    b.title = PENNFARGER[i].n; b.setAttribute('aria-label', PENNFARGER[i].n);
+    b.setAttribute('data-c', PENNFARGER[i].c);
+    tf.appendChild(b);
+  }
+  tf.addEventListener('click', function(e){
+    var t = e.target.closest('.sw'); if (!t) return;
+    txtFargVal = t.getAttribute('data-c'); syncFarger();
+  });
+}
+function fargNamn(lista, hex){
+  for (var i=0;i<lista.length;i++) if (lista[i].c === hex) return lista[i].n;
+  return 'Egen färg';
+}
+function syncFarger(){
+  var n, i;
+  $('valdPennfarg').textContent = 'Vald: ' + fargNamn(PENNFARGER, S.pennfarg);
+  $('valdSidfarg').textContent = 'Valt: ' + fargNamn(SIDFARGER, S.sidfarg);
+  var vt = $('valdTxtFarg');
+  if (vt) vt.textContent = 'Vald: ' + fargNamn(PENNFARGER, txtFargVal);
+  n = $('pennfarg').querySelectorAll('.sw');
+  for (i=0;i<n.length;i++) n[i].classList.toggle('on', n[i].getAttribute('data-c') === S.pennfarg);
+  n = $('sidfarg').querySelectorAll('.swp');
+  for (i=0;i<n.length;i++) n[i].classList.toggle('on', n[i].getAttribute('data-c') === S.sidfarg);
+  n = $('txtFarg').querySelectorAll('.sw');
+  for (i=0;i<n.length;i++) n[i].classList.toggle('on', n[i].getAttribute('data-c') === txtFargVal);
+}
+function syncUI(){
+  markera('pennstorlek', S.pennstorlek);
+  markera('penntyp', S.penntyp);
+  markera('linjatur', S.linjatur);
+  markera('format', S.format);
+  $('lageSpar').classList.toggle('on', S.spar);
+  $('visaMarkor').classList.toggle('on', S.markor);
+  $('visaNummer').classList.toggle('on', S.nummer);
+  $('naturligFart').classList.toggle('on', S.naturlig);
+  $('lageSlinga').classList.toggle('on', S.slinga);
+  $('zoom').value = S.zoom; $('fart').value = S.fart;
+  document.documentElement.setAttribute('data-tema', S.tema === 'mork' ? 'mork' : 'ljus');
+  $('btnTema').title = S.tema === 'mork' ? 'Ljust läge' : 'Mörkt läge';
+  cFo.style.display = S.spar ? 'block' : 'none';
+  syncFarger(); sattFormat();
+}
+
+function blink(msg){
+  var d = document.createElement('div');
+  d.textContent = msg;
+  d.className = 'notis';
+  document.body.appendChild(d);
+  setTimeout(function(){ d.remove(); }, 2600);
+}
+
+/* ---------------- Händelser ---------------- */
+gruppKlick('pennstorlek', function(v){ S.pennstorlek = +v; });
+gruppKlick('penntyp',     function(v){ S.penntyp = v; });
+gruppKlick('linjatur',    function(v){ S.linjatur = v; drawBg(); });
+gruppKlick('format',      function(v){ S.format = v; sattFormat(); });
+
+$('egenFarg').addEventListener('input', function(e){ S.pennfarg = e.target.value; syncFarger(); spara(); });
+
+function vaxla(id, nyckel, efter){
+  $(id).addEventListener('click', function(){
+    S[nyckel] = !S[nyckel];
+    $(id).classList.toggle('on', S[nyckel]);
+    if (efter) efter();
+    spara();
+  });
+}
+vaxla('visaMarkor',   'markor',   function(){ if (!anim) ritaOverlay(null); });
+vaxla('visaNummer',   'nummer',   function(){ if (!anim) ritaOverlay(null); });
+vaxla('naturligFart', 'naturlig');
+vaxla('lageSlinga',   'slinga');
+$('lageSpar').addEventListener('click', function(){
+  S.spar = !S.spar; $('lageSpar').classList.toggle('on', S.spar);
+  cFo.style.display = S.spar ? 'block' : 'none';
+  if (S.spar && !guide.length) blink('Ingen förlaga utlagd än.');
+  spara();
+});
+
+$('zoom').addEventListener('input', function(e){ S.zoom = +e.target.value; sattZoom(); spara(); });
+$('fart').addEventListener('input', function(e){ S.fart = +e.target.value; spara(); });
+
+$('btnSpela').addEventListener('click', spelaUpp);
+$('btnPaus').addEventListener('click', function(){
+  if (!anim) return;
+  if (anim.pausad) fortsatt(); else pausa();
+});
+$('btnAngra').addEventListener('click', function(){
+  if (anim) stoppa();
+  if (!items.length) return;
+  undone.push(items.pop()); redrawInk(); ritaOverlay(null);
+});
+$('btnGorOm').addEventListener('click', function(){
+  if (!undone.length) return;
+  items.push(undone.pop()); redrawInk(); ritaOverlay(null);
+});
+var rensaBekraftad = 0;
+$('btnRensa').addEventListener('click', function(){
+  // Pa en smartboard ar det latt att komma at Rensa mitt i en lektion.
+  if (items.length && Date.now() - rensaBekraftad > 3000){
+    rensaBekraftad = Date.now();
+    blink('Tryck på Rensa en gång till för att tömma sidan.');
+    return;
+  }
+  rensaBekraftad = 0;
+  if (anim) stoppa();
+  items = []; undone = []; redrawInk(); ritaOverlay(null);
+});
+
+$('btnTavla').addEventListener('click', function(){
+  S.tavla = !S.tavla;
+  document.documentElement.setAttribute('data-tavla', S.tavla ? 'pa' : 'av');
+  $('btnTavla').classList.toggle('on', S.tavla);
+  try { localStorage.setItem('skrivovaren_tavla', S.tavla ? '1' : ''); } catch(e){}
+  blink(S.tavla ? 'Tavelläge på.' : 'Tavelläge av.');
+});
+
+function sattFokus(){
+  document.documentElement.setAttribute('data-fokus', S.fokus ? 'pa' : 'av');
+  $('btnFokus').classList.toggle('on', S.fokus);
+  $('btnFokus').querySelector('.txt').textContent = S.fokus ? 'Visa inställningar' : 'Dölj inställningar';
+  $('panelLeft').classList.remove('open');
+  $('panelRight').classList.remove('open');
+}
+$('btnFokus').addEventListener('click', function(){
+  S.fokus = !S.fokus;
+  sattFokus();
+  try { localStorage.setItem('skrivovaren_fokus', S.fokus ? '1' : ''); } catch(e){}
+});
+
+$('btnHandForlaga').addEventListener('click', function(){
+  if (anim) stoppa();
+  if (!items.length){ blink('Ingenting att göra till förlaga än.'); return; }
+  var nya = JSON.parse(JSON.stringify(items));
+  for (var i=0;i<nya.length;i++) nya[i].alpha = 0.22;
+  guide = guide.concat(nya);
+  items = []; undone = [];
+  S.spar = true; $('lageSpar').classList.add('on'); cFo.style.display = 'block';
+  redrawInk(); redrawGuide(); ritaOverlay(null); spara();
+  blink('Förlagan är utlagd.');
+});
+$('btnRensaForlaga2').addEventListener('click', function(){
+  guide = []; redrawGuide(); blink('Förlagan är borttagen.');
+});
+
+$('btnSparaBokstav').addEventListener('click', function(){
+  var namn = ($('bokstavNamn').value || '').trim();
+  if (!items.length){ blink('Ingenting att spara än.'); return; }
+  if (!namn){ blink('Ge bokstaven ett namn.'); $('bokstavNamn').focus(); return; }
+  var fanns = -1;
+  for (var i=0;i<bibliotek.length;i++) if (bibliotek[i].namn === namn) fanns = i;
+  var post = { namn:namn, w:PAGE.w, h:PAGE.h, items:komprimera(items) };
+  if (fanns >= 0) bibliotek[fanns] = post; else bibliotek.push(post);
+  sparaBibliotek(); visaBibliotek();
+  blink(fanns >= 0 ? ('Uppdaterat: ' + namn) : ('Sparat: ' + namn));
+});
+$('btnExport').addEventListener('click', function(){
+  if (!bibliotek.length){ blink('Biblioteket är tomt.'); return; }
+  var data = JSON.stringify({ typ:'skrivovaren-bokstaver', v:1, bokstaver:bibliotek });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], {type:'application/json'}));
+  a.download = 'skrivovaren-bokstaver.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 800);
+});
+$('btnImport').addEventListener('click', function(){ $('filImport').click(); });
+$('filImport').addEventListener('change', function(e){
+  var f = e.target.files[0]; if (!f) return;
+  var r = new FileReader();
+  r.onload = function(){
+    try {
+      var o = JSON.parse(r.result);
+      var nya = (o && o.bokstaver) || [];
+      if (!nya.length) throw new Error('tom');
+      for (var i=0;i<nya.length;i++){
+        var hittad = -1;
+        for (var j=0;j<bibliotek.length;j++) if (bibliotek[j].namn === nya[i].namn) hittad = j;
+        if (hittad >= 0) bibliotek[hittad] = nya[i]; else bibliotek.push(nya[i]);
+      }
+      sparaBibliotek(); visaBibliotek();
+      blink(nya.length + ' bokstäver importerade.');
+    } catch(err){ blink('Filen kunde inte läsas.'); }
+  };
+  r.readAsText(f);
+  e.target.value = '';
+});
+
+$('btnPng').addEventListener('click', laddaNerPng);
+$('btnPrint').addEventListener('click', skrivUt);
+$('btnFull').addEventListener('click', function(){
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+});
+document.addEventListener('fullscreenchange', function(){
+  var pa = !!document.fullscreenElement;
+  $('btnFull').classList.toggle('on', pa);
+  $('btnFull').querySelector('.txt').textContent = pa ? 'Avsluta helskärm' : 'Helskärm';
+});
+$('btnTema').addEventListener('click', function(){
+  S.tema = (S.tema === 'mork') ? 'ljus' : 'mork';
+  document.documentElement.setAttribute('data-tema', S.tema === 'mork' ? 'mork' : 'ljus');
+  $('btnTema').title = S.tema === 'mork' ? 'Ljust läge' : 'Mörkt läge';
+  try { localStorage.setItem('skrivovaren_tema', S.tema); } catch(e){}
+});
+$('btnDela').addEventListener('click', function(){
+  var url = location.origin + location.pathname + '#i=' + b64(JSON.stringify(samla()));
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(function(){ blink('Länk kopierad.'); },
+      function(){ prompt('Kopiera länken:', url); });
+  } else prompt('Kopiera länken:', url);
+});
+
+/* Paneler (mobil) */
+$('btnLeft').addEventListener('click', function(){
+  $('panelLeft').classList.toggle('open'); $('panelRight').classList.remove('open');
+});
+$('btnRight').addEventListener('click', function(){
+  $('panelRight').classList.toggle('open'); $('panelLeft').classList.remove('open');
+});
+$('stage').addEventListener('pointerdown', function(){
+  $('panelLeft').classList.remove('open'); $('panelRight').classList.remove('open');
+});
+
+/* Modaler */
+function oppna(id){ $(id).classList.add('open'); }
+function stang(id){ $(id).classList.remove('open'); }
+$('btnText').addEventListener('click', function(){ oppna('ovText'); });
+$('btnHjalp').addEventListener('click', function(){ oppna('ovHjalp'); });
+document.addEventListener('click', function(e){
+  if (e.target.hasAttribute && e.target.hasAttribute('data-close')) e.target.closest('.overlay').classList.remove('open');
+  if (e.target.classList && e.target.classList.contains('overlay')) e.target.classList.remove('open');
+});
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape'){ stang('ovText'); stang('ovHjalp'); if (anim) stoppa(); }
+  if ((e.ctrlKey||e.metaKey) && e.key === 'z'){ e.preventDefault(); $('btnAngra').click(); }
+  if ((e.ctrlKey||e.metaKey) && e.key === 'y'){ e.preventDefault(); $('btnGorOm').click(); }
+  if (e.key === ' ' && e.target === document.body){ e.preventDefault(); spelaUpp(); }
+});
+
+$('snabbval').addEventListener('click', function(e){
+  var b = e.target.closest('.chip'); if (!b) return;
+  $('txtText').value = b.getAttribute('data-t');
+});
+
+$('btnSkrivText').addEventListener('click', function(){
+  var txt = $('txtText').value.trim();
+  if (!txt){ blink('Ingen text angiven.'); return; }
+  var rader = byggTextrader(txt, clamp(parseInt($('txtAntal').value,10)||1,1,200),
+                            $('txtFont').value, $('txtStorlek').value, txtFargVal, 1);
+  items = items.concat(rader);
+  undone = [];
+  redrawInk(); ritaOverlay(null); stang('ovText'); spara();
+});
+$('btnForlaga').addEventListener('click', function(){
+  var txt = $('txtText').value.trim();
+  if (!txt){ blink('Ingen text angiven.'); return; }
+  guide = byggTextrader(txt, clamp(parseInt($('txtAntal').value,10)||1,1,200),
+                        $('txtFont').value, $('txtStorlek').value, txtFargVal, 0.22);
+  S.spar = true; $('lageSpar').classList.add('on'); cFo.style.display = 'block';
+  redrawGuide(); stang('ovText'); spara();
+  blink('Förlagan är utlagd.');
+});
+$('btnRensaForlaga').addEventListener('click', function(){
+  guide = []; redrawGuide(); blink('Förlagan är borttagen.');
+});
+
+/* ---------------- Start ---------------- */
+(function init(){
+  byggFargrutor();
+
+  try {
+    var t = localStorage.getItem('skrivovaren_tema'); if (t) S.tema = t;
+    S.tavla = !!localStorage.getItem('skrivovaren_tavla');
+    S.fokus = !!localStorage.getItem('skrivovaren_fokus');
+    var sp = localStorage.getItem('skrivovaren_v1');
+    if (sp) tillampa(JSON.parse(sp));
+  } catch(e){}
+
+  if (location.hash.indexOf('#i=') === 0){
+    try { tillampa(JSON.parse(unb64(location.hash.slice(3)))); } catch(e){}
+  }
+
+  var d = new Date();
+  var dagar = ['söndag','måndag','tisdag','onsdag','torsdag','fredag','lördag'];
+  var man = ['januari','februari','mars','april','maj','juni','juli','augusti','september','oktober','november','december'];
+  $('datum').textContent = dagar[d.getDay()] + ' ' + d.getDate() + ' ' + man[d.getMonth()] + ' ' + d.getFullYear();
+
+  document.documentElement.setAttribute('data-tavla', S.tavla ? 'pa' : 'av');
+  $('btnTavla').classList.toggle('on', S.tavla);
+  sattFokus();
+  laddaBibliotek();
+  visaBibliotek();
+  syncUI();
+
+  // Anpassa startzoom efter fönstret
+  var st = $('stage');
+  var pass = Math.floor((st.clientHeight - 40) / PAGE.h * 100);
+  if (pass > 25 && pass < S.zoom){ S.zoom = pass; $('zoom').value = pass; sattZoom(); }
+
+  window.addEventListener('beforeprint', function(){
+    if (!$('printImg').src) $('printImg').src = komposit().toDataURL('image/png');
+  });
+})();
+
+})();
+</script>
+</body>
+</html>
